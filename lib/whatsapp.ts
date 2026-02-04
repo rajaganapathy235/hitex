@@ -16,10 +16,18 @@ async function sendToWhapi(text: string, to: string) {
     }
 
     try {
-        // Ensure phone number is clean and has international format (e.g. 919876543210)
+        // Ensure phone number is clean
         let cleanPhone = to.replace(/\D/g, '');
 
-        console.log(`[Whapi] Attempting to send message to: ${cleanPhone}`);
+        // If it's a 10-digit number, assume it's Indian and prepend 91
+        if (cleanPhone.length === 10) {
+            cleanPhone = '91' + cleanPhone;
+        }
+
+        // Whapi.cloud often prefers the full JID (e.g. 919876543210@s.whatsapp.net)
+        const recipientId = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
+
+        console.log(`[Whapi] Attempting to send message to: ${recipientId}`);
 
         const response = await fetch('https://gate.whapi.cloud/messages/text', {
             method: 'POST',
@@ -28,7 +36,7 @@ async function sendToWhapi(text: string, to: string) {
                 'Authorization': `Bearer ${WHAPI_TOKEN}`
             },
             body: JSON.stringify({
-                to: cleanPhone,
+                to: recipientId,
                 body: text,
                 typing_time: 0
             }),
