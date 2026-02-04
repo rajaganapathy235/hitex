@@ -1,63 +1,62 @@
 /**
- * WhatsApp Utility for sending messages via WAHA (WhatsApp HTTP API)
- * Website: https://waha.devlike.pro/
+ * WhatsApp Utility for sending messages via Whapi.cloud
+ * Website: https://whapi.cloud/
  */
 
-const WAHA_API_URL = process.env.WAHA_API_URL || '';
-const WAHA_API_KEY = process.env.WAHA_API_KEY || '';
-const WAHA_SESSION = process.env.WAHA_SESSION || 'default';
+const WHAPI_TOKEN = process.env.WHAPI_TOKEN || '';
 
-// Generic function to send data to WAHA
-async function sendToWaha(text: string, to: string) {
-    if (!WAHA_API_URL) {
+// Generic function to send data to Whapi.cloud
+async function sendToWhapi(text: string, to: string) {
+    if (!WHAPI_TOKEN) {
         if (process.env.NODE_ENV === 'development') {
-            console.warn('WAHA_API_URL not configured. Message:', text);
+            console.warn('WHAPI_TOKEN not configured. Message:', text);
             return { success: true, simulated: true };
         }
-        return { success: false, error: 'WAHA API URL not configured' };
+        return { success: false, error: 'Whapi.cloud token not configured' };
     }
 
     try {
-        // WAHA numbers usually need @c.us suffix
-        const chatId = to.includes('@') ? to : `${to.replace(/\D/g, '')}@c.us`;
+        // Whapi.cloud numbers usually need @s.whatsapp.net suffix or just the number
+        // The API accepts both, but let's stick to the clean number if possible
+        const cleanPhone = to.replace(/\D/g, '');
 
-        const response = await fetch(`${WAHA_API_URL}/api/sendText`, {
+        const response = await fetch('https://gate.whapi.cloud/messages/text', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                ...(WAHA_API_KEY ? { 'X-Api-Key': WAHA_API_KEY } : {})
+                'Authorization': `Bearer ${WHAPI_TOKEN}`
             },
             body: JSON.stringify({
-                chatId,
-                text,
-                session: WAHA_SESSION,
+                to: cleanPhone,
+                body: text,
+                typing_time: 0
             }),
         });
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('WAHA Error:', errorText);
-            return { success: false, error: `WAHA responded with ${response.status}` };
+            console.error('Whapi Error:', errorText);
+            return { success: false, error: `Whapi responded with ${response.status}` };
         }
 
         return { success: true };
     } catch (error) {
-        console.error('WAHA Fetch Error:', error);
-        return { success: false, error: 'Connection to WAHA service failed' };
+        console.error('Whapi Fetch Error:', error);
+        return { success: false, error: 'Connection to Whapi service failed' };
     }
 }
 
 export async function sendOTP(phone: string, code: string) {
     const text = `Your HITEX login OTP is: ${code}. Valid for 5 minutes.`;
-    return sendToWaha(text, phone);
+    return sendToWhapi(text, phone);
 }
 
 export async function sendCreditNotification(phone: string, points: number, balance: number) {
     const text = `Congratulations! ${points} points have been credited to your HITEX account. Your new balance is ${balance} points.`;
-    return sendToWaha(text, phone);
+    return sendToWhapi(text, phone);
 }
 
 export async function sendDebitNotification(phone: string, amount: number) {
     const text = `Your withdrawal request for ${amount} points has been processed successfully.`;
-    return sendToWaha(text, phone);
+    return sendToWhapi(text, phone);
 }
