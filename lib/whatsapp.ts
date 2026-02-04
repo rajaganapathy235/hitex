@@ -16,9 +16,10 @@ async function sendToWhapi(text: string, to: string) {
     }
 
     try {
-        // Whapi.cloud numbers usually need @s.whatsapp.net suffix or just the number
-        // The API accepts both, but let's stick to the clean number if possible
-        const cleanPhone = to.replace(/\D/g, '');
+        // Ensure phone number is clean and has international format (e.g. 919876543210)
+        let cleanPhone = to.replace(/\D/g, '');
+
+        console.log(`[Whapi] Attempting to send message to: ${cleanPhone}`);
 
         const response = await fetch('https://gate.whapi.cloud/messages/text', {
             method: 'POST',
@@ -33,15 +34,18 @@ async function sendToWhapi(text: string, to: string) {
             }),
         });
 
+        const responseData = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Whapi Error:', errorText);
-            return { success: false, error: `Whapi responded with ${response.status}` };
+            console.error('Whapi Error Status:', response.status);
+            console.error('Whapi Error Body:', JSON.stringify(responseData));
+            return { success: false, error: responseData.error?.message || `Whapi responded with ${response.status}` };
         }
 
+        console.log('[Whapi] Message sent successfully');
         return { success: true };
-    } catch (error) {
-        console.error('Whapi Fetch Error:', error);
+    } catch (error: any) {
+        console.error('Whapi Fetch Error:', error.message);
         return { success: false, error: 'Connection to Whapi service failed' };
     }
 }

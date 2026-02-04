@@ -25,13 +25,16 @@ export async function requestLoginOTP(phone: string, role: 'admin' | 'agent') {
     const result = await whatsapp.sendOTP(phone, otpCode);
 
     if (!result.success) {
-        // Fallback for development: log to console
-        console.log(`[DEV OTP] Phone: ${phone}, OTP: ${otpCode}`);
-        return {
-            success: true,
-            warning: "WhatsApp service unavailable. OTP shown in console for dev.",
-            otp: process.env.NODE_ENV === 'development' ? otpCode : undefined
-        };
+        console.error("WhatsApp OTP failed:", result.error);
+        if (process.env.NODE_ENV === 'development') {
+            console.log(`[DEV OTP] Phone: ${phone}, OTP: ${otpCode}`);
+            return {
+                success: true,
+                warning: "WhatsApp failed. OTP shown in console for dev.",
+                otp: otpCode
+            };
+        }
+        return { success: false, error: `Failed to send WhatsApp: ${result.error}` };
     }
 
     return { success: true };
