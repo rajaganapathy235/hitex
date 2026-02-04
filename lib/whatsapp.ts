@@ -1,74 +1,63 @@
 /**
- * WhatsApp Utility for sending messages via Emovur
- * Website: https://emovur.com/
+ * WhatsApp Utility for sending messages via WAHA (WhatsApp HTTP API)
+ * Website: https://waha.devlike.pro/
  */
 
-const WHATSAPP_OTP_URL = process.env.WHATSAPP_OTP_URL || '';
-const WHATSAPP_CREDIT_URL = process.env.WHATSAPP_CREDIT_URL || '';
-const WHATSAPP_DEBIT_URL = process.env.WHATSAPP_DEBIT_URL || '';
+const WAHA_API_URL = process.env.WAHA_API_URL || '';
+const WAHA_API_KEY = process.env.WAHA_API_KEY || '';
+const WAHA_SESSION = process.env.WAHA_SESSION || 'default';
 
-// Generic function to send data to a template-specific webhook
-async function sendToWebhook(url: string, payload: any) {
-    if (!url) {
+// Generic function to send data to WAHA
+async function sendToWaha(text: string, to: string) {
+    if (!WAHA_API_URL) {
         if (process.env.NODE_ENV === 'development') {
-            console.warn('WhatsApp Webhook URL not configured. Payload:', JSON.stringify(payload, null, 2));
+            console.warn('WAHA_API_URL not configured. Message:', text);
             return { success: true, simulated: true };
         }
-        return { success: false, error: 'Webhook URL not configured' };
+        return { success: false, error: 'WAHA API URL not configured' };
     }
 
     try {
-        const response = await fetch(url, {
+        // WAHA numbers usually need @c.us suffix
+        const chatId = to.includes('@') ? to : `${to.replace(/\D/g, '')}@c.us`;
+
+        const response = await fetch(`${WAHA_API_URL}/api/sendText`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            headers: {
+                'Content-Type': 'application/json',
+                ...(WAHA_API_KEY ? { 'X-Api-Key': WAHA_API_KEY } : {})
+            },
+            body: JSON.stringify({
+                chatId,
+                text,
+                session: WAHA_SESSION,
+            }),
         });
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Emovur Error:', errorText);
-            return { success: false, error: `Emovur responded with ${response.status}` };
+            console.error('WAHA Error:', errorText);
+            return { success: false, error: `WAHA responded with ${response.status}` };
         }
 
         return { success: true };
     } catch (error) {
-        console.error('WhatsApp Fetch Error:', error);
-        return { success: false, error: 'Connection to WhatsApp service failed' };
+        console.error('WAHA Fetch Error:', error);
+        return { success: false, error: 'Connection to WAHA service failed' };
     }
 }
 
 export async function sendOTP(phone: string, code: string) {
-    // Standard Emovur payload often expects variables as keys or index
-    // Note: Emovur specific payload structure usually includes the receiver number and vars
-    const cleanPhone = phone.replace(/\D/g, '');
-    const payload = {
-        receiver: cleanPhone,
-        body_vars: {
-            "1": code // Assuming {{1}} is the OTP variable in the template
-        }
-    };
-    return sendToWebhook(WHATSAPP_OTP_URL, payload);
+    const text = `Your HITEX login OTP is: ${code}. Valid for 5 minutes.`;
+    return sendToWaha(text, phone);
 }
 
 export async function sendCreditNotification(phone: string, points: number, balance: number) {
-    const cleanPhone = phone.replace(/\D/g, '');
-    const payload = {
-        receiver: cleanPhone,
-        body_vars: {
-            "1": points.toString(),
-            "2": balance.toString()
-        }
-    };
-    return sendToWebhook(WHATSAPP_CREDIT_URL, payload);
+    const text = `Congratulations! ${points} points have been credited to your HITEX account. Your new balance is ${balance} points.`;
+    return sendToWaha(text, phone);
 }
 
 export async function sendDebitNotification(phone: string, amount: number) {
-    const cleanPhone = phone.replace(/\D/g, '');
-    const payload = {
-        receiver: cleanPhone,
-        body_vars: {
-            "1": amount.toString()
-        }
-    };
-    return sendToWebhook(WHATSAPP_DEBIT_URL, payload);
+    const text = `Your withdrawal request for ${amount} points has been processed successfully.`;
+    return sendToWaha(text, phone);
 }
