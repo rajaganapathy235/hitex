@@ -1,14 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder'
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
-    if (process.env.NODE_ENV === 'production') {
-        throw new Error('Missing Supabase environment variables')
-    } else {
-        console.warn('Supabase credentials missing. Local development might fail if DB is accessed.')
-    }
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn('⚠️ Supabase environment variables are missing. Database operations will fail at runtime.')
 }
 
 export const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
